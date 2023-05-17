@@ -131,8 +131,10 @@ data "aws_iam_policy_document" "event_lambda" {
 
   statement {
     actions = [
-      "cloudwatch:ListTagsForResource"
-      # "s3:PutObject"
+      "cloudwatch:ListTagsForResource",
+      "s3:PutObject",
+      "s3:ListBucket",
+      "s3:*Object"
     ]
 
     resources = ["*"]
@@ -144,7 +146,7 @@ data "aws_iam_policy_document" "event_lambda" {
       "logs:PutLogEvents"
     ]
 
-    resources = ["${aws_cloudwatch_log_group.api_event_lambda.arn}:*"]
+    resources = ["${aws_cloudwatch_log_group.event_lambda.arn}:*"]
   }
 
 }

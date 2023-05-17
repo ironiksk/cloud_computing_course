@@ -52,10 +52,11 @@ resource "aws_lambda_function" "api_event_lambda" {
 
   timeout = 10
 
-  #environment {
-  #  variables = {
-  #  }
-  #}
+  environment {
+    variables = {
+      EVENT_BUS = local.bus_name
+    }
+  }
 
   tags = local.common_tags
 
@@ -93,10 +94,11 @@ resource "aws_lambda_function" "event_lambda" {
 
   timeout = 10
 
-  #environment {
-  #  variables = {
-  #  }
-  #}
+  environment {
+   variables = {
+    BUCKET_NAME = local.bucket_name
+   }
+  }
 
   tags = local.common_tags
 
