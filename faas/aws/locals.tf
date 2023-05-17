@@ -7,5 +7,6 @@ locals {
   }
 
   api_event_lambda_name = "api-event"
+  event_lambda_name = "event"
 
 }

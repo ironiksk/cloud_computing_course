@@ -23,7 +23,7 @@ def check_auth(event):
 
 
 
-def lambda_handler(event, context):
+def api_lambda_handler(event, context):
     logger.info("Event: " + str(event))
     # TODO implement
     
@@ -38,21 +38,29 @@ def lambda_handler(event, context):
     response = event_client.put_events(
         Entries=[
             {
-                'Source':'api',
-                'DetailType':'user-preferences',
+                'Source':'api.event',
+                'DetailType':'custom',
                 'Detail': json.dumps(event),
                 'EventBusName':'event-bus'
             }
         ]
     )
-
+    event['response'] = response
         # print(response)
 
     return {
         'statusCode': 200,
         'headers': {"content-type": "application/json"},
-        'body': json.dumps(event),
+        'body': json.dumps(event)
     }
 
     
+
+def event_lambda_handler(event, context):
+    logger.info(f'Hello World!')
+    logger.info(f'## ENVIRONMENT VARIABLES: {os.environ}')
+    logger.info(f'## EVENT: {event}')
+    return {
+        'statusCode': 200,
+    }
 

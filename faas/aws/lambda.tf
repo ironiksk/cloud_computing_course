@@ -9,6 +9,16 @@ resource "aws_cloudwatch_log_group" "api_event_lambda" {
   tags = local.common_tags
 }
 
+
+resource "aws_cloudwatch_log_group" "event_lambda" {
+  name              = "/aws/lambda/${local.event_lambda_name}"
+  retention_in_days = var.log_retention_period
+
+  tags = local.common_tags
+}
+
+
+
 # Lambda doesn't have `request` package by default. We need to install this package locally and add it to zip file.
 resource "null_resource" "install_package" {
   triggers = {
@@ -34,7 +44,7 @@ resource "aws_lambda_function" "api_event_lambda" {
   filename      = data.archive_file.api_event_lambda.output_path
   function_name = local.api_event_lambda_name
   role          = aws_iam_role.api_event_lambda.arn
-  handler       = "api.lambda_handler"
+  handler       = "api.api_lambda_handler"
 
   source_code_hash = data.archive_file.api_event_lambda.output_base64sha256
 
@@ -42,10 +52,10 @@ resource "aws_lambda_function" "api_event_lambda" {
 
   timeout = 10
 
-  environment {
-    variables = {
-    }
-  }
+  #environment {
+  #  variables = {
+  #  }
+  #}
 
   tags = local.common_tags
 
@@ -65,3 +75,44 @@ resource "aws_lambda_permission" "api_event" {
   # within API Gateway HTTP API.
   source_arn = "${aws_apigatewayv2_api.api_event.execution_arn}/*/*/*"
 }
+
+
+######
+
+
+
+resource "aws_lambda_function" "event_lambda" {
+  filename      = data.archive_file.api_event_lambda.output_path
+  function_name = local.event_lambda_name
+  role          = aws_iam_role.event_lambda.arn
+  handler       = "api.event_lambda_handler"
+
+  source_code_hash = data.archive_file.api_event_lambda.output_base64sha256
+
+  runtime = "python3.9"
+
+  timeout = 10
+
+  #environment {
+  #  variables = {
+  #  }
+  #}
+
+  tags = local.common_tags
+
+  depends_on = [
+    aws_iam_role_policy_attachment.event_lambda,
+    aws_cloudwatch_log_group.event_lambda
+  ]
+}
+
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_lambda" {
+    statement_id = "AllowExecutionFromEventBridge"
+    action = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.event_lambda.function_name}"
+    principal = "events.amazonaws.com"
+    # source_arn = "${module.eventbridge.aws_cloudwatch_event_rule.this["events"].arn}"
+    source_arn = "${module.eventbridge.eventbridge_rule_arns["events"]}"
+}
+
