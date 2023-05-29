@@ -165,6 +165,68 @@ resource "aws_iam_role_policy_attachment" "event_lambda" {
   role       = aws_iam_role.event_lambda.name
 }
 
+### Lambda DB
+
+
+
+data "aws_iam_policy_document" "lambda_db_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+
+resource "aws_iam_role" "db_lambda" {
+  name = local.db_lambda_name
+
+  assume_role_policy = data.aws_iam_policy_document.lambda_db_assume_role.json
+
+  tags = local.common_tags
+}
+
+
+data "aws_iam_policy_document" "db_lambda" {
+
+  statement {
+    actions = [
+      "cloudwatch:ListTagsForResource",
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+
+    resources = ["${aws_cloudwatch_log_group.db_lambda.arn}:*"]
+  }
+
+}
+
+resource "aws_iam_policy" "db_lambda" {
+  name        = local.db_lambda_name
+  path        = "/"
+  description = "Policy for DB Lambda"
+  policy      = data.aws_iam_policy_document.db_lambda.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "db_lambda" {
+  policy_arn = aws_iam_policy.db_lambda.arn
+  role       = aws_iam_role.db_lambda.name
+}
+
+
 
 
 ###

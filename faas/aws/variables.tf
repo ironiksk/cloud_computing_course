@@ -26,3 +26,5 @@ variable "log_retention_period" {
   type        = number
   default     = 30
 }
+
+

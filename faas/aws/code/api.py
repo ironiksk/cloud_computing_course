@@ -4,6 +4,9 @@ import json
 import logging
 import uuid
 
+import random
+
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -79,3 +82,54 @@ def event_lambda_handler(event, context):
         'statusCode': 200,
     }
 
+
+def get_credentials():
+    credential = {}
+    
+    secret_name = "faas-database-creds" # FIXME
+    region_name = "us-west-2" # FIXME
+    
+    client = boto3.client(
+      service_name='secretsmanager',
+      region_name=region_name
+    )
+    
+    get_secret_value_response = client.get_secret_value(
+      SecretId=secret_name
+    )
+    
+    secret = json.loads(get_secret_value_response['SecretString'])
+    
+    credential['username'] = secret['username']
+    credential['password'] = secret['password']
+    credential['host'] = os.getenv('DB_INSTANCE_ADDRESS')
+    credential['db'] = "database"
+    
+    return credential
+
+
+def db_lambda_handler(event, context):
+    import psycopg2 as pg
+    # import awswrangler.secretsmanager as awssm 
+
+    logger.info("Event: " + str(event))
+
+    # database_name = "main"
+    # table_name = "cities"
+    # username = sm.get_secret_json( "postgres-database" ).get( "username" )
+    # password = sm.get_secret_json( "postgres-database" ).get( "password" )
+    # port = "5432"
+    # host_name =  
+
+    credential = get_credentials()
+    logger.info("credentials: " + json.dumps(credential))
+    connection = pg.connect(user=credential['username'], password=credential['password'], host=credential['host'], database=credential['db'])
+    cursor = connection.cursor()
+    query = "SELECT version() AS version"
+    cursor.execute(query)
+    results = cursor.fetchone()
+    cursor.close()
+    connection.commit()
+
+    logger.info(results)
+    

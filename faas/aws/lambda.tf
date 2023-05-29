@@ -18,6 +18,14 @@ resource "aws_cloudwatch_log_group" "event_lambda" {
 }
 
 
+resource "aws_cloudwatch_log_group" "db_lambda" {
+  name              = "/aws/lambda/${local.db_lambda_name}"
+  retention_in_days = var.log_retention_period
+
+  tags = local.common_tags
+}
+
+
 
 # Lambda doesn't have `request` package by default. We need to install this package locally and add it to zip file.
 resource "null_resource" "install_package" {
@@ -28,7 +36,7 @@ resource "null_resource" "install_package" {
   provisioner "local-exec" {
     working_dir = "${path.module}"
 
-    command = "pip3 install boto3 -t ./code/"
+    command = "pip3 install boto3 aws-psycopg2 -t ./code/"
   }
 }
 
@@ -78,8 +86,7 @@ resource "aws_lambda_permission" "api_event" {
 }
 
 
-######
-
+###### S3 Lambda
 
 
 resource "aws_lambda_function" "event_lambda" {
@@ -117,4 +124,43 @@ resource "aws_lambda_permission" "allow_eventbridge_to_call_lambda" {
     # source_arn = "${module.eventbridge.aws_cloudwatch_event_rule.this["events"].arn}"
     source_arn = "${module.eventbridge.eventbridge_rule_arns["events"]}"
 }
+
+
+
+
+###### DB Lambda
+
+
+resource "aws_lambda_function" "db_lambda" {
+  filename      = data.archive_file.api_event_lambda.output_path
+  function_name = local.db_lambda_name
+  role          = aws_iam_role.db_lambda.arn
+  handler       = "api.db_lambda_handler"
+
+  source_code_hash = data.archive_file.api_event_lambda.output_base64sha256
+
+  runtime = "python3.9"
+
+  timeout = 10
+
+  environment {
+   variables = {
+    DB_INSTANCE_ADDRESS = module.db.db_instance_address #aws_db_instance.bl-db.address
+   }
+  }
+
+  tags = local.common_tags
+}
+
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_db_lambda" {
+    statement_id = "AllowExecutionFromEventBridge"
+    action = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.db_lambda.function_name}"
+    principal = "events.amazonaws.com"
+    source_arn = "${module.eventbridge.eventbridge_rule_arns["events"]}"
+}
+
+
+
 

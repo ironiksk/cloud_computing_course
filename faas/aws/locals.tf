@@ -8,7 +8,10 @@ locals {
 
   bus_name = "event-bus"
   bucket_name = "ucu-faas-files-bucket"
-  api_event_lambda_name = "api-event"
-  event_lambda_name = "event"
+  api_event_lambda_name = "api_event_function"
+  event_lambda_name = "event_function_function"
+  db_lambda_name = "event_db_function"
 
+  vpc_cidr = "10.0.0.0/16"
+  azs = ["us-west-2a", "us-west-2b", "us-west-2c"]
 }

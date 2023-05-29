@@ -16,7 +16,11 @@ module "eventbridge" {
       {
         name = "call-lambda"
         arn = aws_lambda_function.event_lambda.arn
-      }
+      },
+      {
+        name = "call-lambda-db"
+        arn = aws_lambda_function.db_lambda.arn
+      }      
     ]
   }
 
