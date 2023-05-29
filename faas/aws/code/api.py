@@ -86,7 +86,7 @@ def event_lambda_handler(event, context):
 def get_credentials():
     credential = {}
     
-    secret_name = "faas-database-creds" # FIXME
+    secret_name = "faas-database-secret" # FIXME
     region_name = "us-west-2" # FIXME
     
     client = boto3.client(
@@ -132,4 +132,3 @@ def db_lambda_handler(event, context):
     connection.commit()
 
     logger.info(results)
-    
