@@ -1,55 +1,14 @@
-data "aws_secretsmanager_random_password" "test" {
-  password_length = 50
-  exclude_numbers = true
+resource "aws_db_subnet_group" "database" {
+  name       = "faassubnetdatabase"
+  subnet_ids = module.vpc.public_subnets
 }
-
-resource "random_password" "pgdb" {
-  length = 16
-}
-
-variable "pgdb_username" {
-  type    = string
-  default = "dbuser"
-}
-
-
-# Secrets
-resource "aws_secretsmanager_secret" "pgdb" {
-  name = local.secrets_db_name # "faas-database-secret"
-  recovery_window_in_days = 7
-}
-
-resource "aws_secretsmanager_secret_version" "pgdb" {
-  secret_id     = aws_secretsmanager_secret.pgdb.id
-  secret_string = jsonencode({ username = var.pgdb_username, password = random_password.pgdb.result })
-}
-
-
-# resource "aws_db_instance" "bl-db" {
-#   allocated_storage       = 10 # gigabytes
-#   backup_retention_period = 7 # in days
-#   engine                  = "postgres"
-#   engine_version          = "15.3"
-#   identifier              = "faasdb"
-#   name                    = "faasdb"
-#   instance_class          = "db.t4g.small"
-#   multi_az                = false
-#   username                = var.pgdb_username
-#   password                = random_password.pgdb.result
-#   port                    = 5432
-#   publicly_accessible     = true
-#   storage_encrypted       = false
-#   storage_type            = "gp2"
-#   skip_final_snapshot     = true
-# }
 
 
 module "db" {
   source  = "terraform-aws-modules/rds/aws"
+  version = "~> v5.9.0"
+  identifier = "${local.name_prefix}-db"
 
-  identifier = "faasdb"
-
-  # All available versions: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts
   engine               = "postgres"
   engine_version       = "14"
   family               = "postgres14" # DB parameter group
@@ -59,28 +18,19 @@ module "db" {
   allocated_storage     = 20
   max_allocated_storage = 100
 
-  # NOTE: Do NOT use 'user' as the value for 'username' as it throws:
-  # "Error creating DB Instance: InvalidParameterValue: MasterUsername
-  # user cannot be used as it is a reserved word used by the engine"
-  # db_name  = "database"
-  username = var.pgdb_username
+  db_name = local.db_name
+  username = local.pgdb_username
   password = random_password.pgdb.result
   port     = 5432
 
   multi_az               = true
 
-  # db_subnet_group_name                = module.vpc.database_subnet_group
-  # create_db_subnet_group              = false
-  # vpc_security_group_ids              = [aws_security_group.database.id]
+  db_subnet_group_name                = aws_db_subnet_group.database.id
+  vpc_security_group_ids              = [aws_security_group.database.id]
+  subnet_ids = aws_db_subnet_group.database.subnet_ids
+
 
   publicly_accessible = true
-
-
-  db_subnet_group_name   = module.vpc.database_subnet_group
-
-  # # vpc_security_group_ids = [aws_security_group.database.id] # [module.security_group.security_group_id]
-  vpc_security_group_ids = [module.security_group.security_group_id]
-
 
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
@@ -100,128 +50,4 @@ module "db" {
   monitoring_role_description           = "Description for monitoring role"
 
 }
-
-
-
-################################################################################
-# Supporting Resources
-################################################################################
-
-# module "vpc" {
-#   source  = "terraform-aws-modules/vpc/aws"
-#   version = "~> 3.0"
-
-#   name = "vpc-faas-db"
-#   cidr = local.vpc_cidr
-
-#   enable_nat_gateway   = true
-#   single_nat_gateway   = true
-#   enable_dns_hostnames = true
-
-#   azs              = local.azs
-#   public_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k)]
-#   private_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 3)]
-#   database_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 6)]
-
-#   create_database_subnet_group = true
-
-#   # tags = local.tags
-# }
-
-
-# module "vpc" {
-#   source  = "terraform-aws-modules/vpc/aws"
-#   version = "~> 3.0"
-
-#   create_vpc = false
-
-#   manage_default_vpc               = true
-#   default_vpc_name                 = "default"
-#   default_vpc_enable_dns_hostnames = true
-# }
-
-
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-
-  create_vpc = false
-
-  manage_default_vpc               = true
-  default_vpc_name                 = "default"
-  default_vpc_enable_dns_hostnames = true
-  create_database_subnet_group = true
-}
-
-
-module "security_group" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 4.0"
-
-  name            = "faas_db_security_group"
-  use_name_prefix = false
-
-  description = "Security group with HTTP and Postgress ports open for everybody (IPv4 CIDR)"
-  vpc_id      = module.vpc.vpc_id
-
-  # ingress_cidr_blocks      = [module.vpc.vpc_cidr_block]
-
-  # Add MySQL rules
-  ingress_rules       = ["postgresql-tcp"]
-  egress_rules = ["all-all"]
-}
-
-
-# module "security_group" {
-#   source  = "terraform-aws-modules/security-group/aws"
-#   version = "~> 4.0"
-
-#   name =        "security_group"
-#   description = "Complete PostgreSQL example security group"
-#   vpc_id      = module.vpc.vpc_id
-
-#   # ingress
-#   ingress_with_cidr_blocks = [
-#     {
-#       from_port   = 5432
-#       to_port     = 5432
-#       protocol    = "tcp"
-#       description = "PostgreSQL access from within VPC"
-#       cidr_blocks = module.vpc.vpc_cidr_block
-#     },
-#   ]
-#   egress_with_cidr_blocks = [
-#     {
-#       from_port   = 0
-#       to_port     = 0
-#       protocol    = "tcp"
-#       description = "PostgreSQL access to within VPC"
-#       cidr_blocks = module.vpc.vpc_cidr_block
-#     },
-#   ]
-
-# }
-
-# resource "aws_security_group" "database" {
-#   name        = "faas-database"
-#   vpc_id      = module.vpc.vpc_id
-#   description = "Security Group for database"
-
-#   ingress {
-#     description     = "Ingress from application instances"
-#     from_port       = 5432
-#     to_port         = 5432
-#     protocol        = "TCP"
-#     cidr_blocks = ["0.0.0.0/0"]
-#     # security_groups = ["0.0.0.0"]
-#   }
-
-#   egress {
-#     description = "Egress all"
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-
-# }
 

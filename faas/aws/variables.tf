@@ -7,7 +7,7 @@ variable "account_id" {
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "FaaS"
+  default     = "faas"
 }
 
 variable "env" {
@@ -27,4 +27,8 @@ variable "log_retention_period" {
   default     = 30
 }
 
-
+variable "vpc_cidr" {
+  description = "Network address block for VPC"
+  type        = string
+  default     = "10.20.0.0/20"
+}

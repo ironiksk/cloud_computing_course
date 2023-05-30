@@ -100,13 +100,17 @@ def get_credentials():
     
     secret = json.loads(get_secret_value_response['SecretString'])
     
-    credential['username'] = secret['username']
-    credential['password'] = secret['password']
-    credential['host'] = os.getenv('DB_INSTANCE_ADDRESS')
-    credential['db'] = "database"
+    # credential['username'] = secret['username']
+    # credential['password'] = secret['password']
     
-    return credential
+    return secret
 
+
+CREATE_TABLE = """CREATE TABLE IF NOT EXISTS data (
+  id int,
+  uuid VARCHAR(255) NOT NULL,
+  data varchar
+)"""
 
 def db_lambda_handler(event, context):
     import psycopg2 as pg
@@ -123,7 +127,12 @@ def db_lambda_handler(event, context):
 
     credential = get_credentials()
     logger.info("credentials: " + json.dumps(credential))
-    connection = pg.connect(user=credential['username'], password=credential['password'], host=credential['host'], database=credential['db'])
+    connection = pg.connect(
+        user=credential['username'], 
+        password=credential['password'], 
+        host=credential['host'], 
+        database=credential['database']
+    )
     cursor = connection.cursor()
     query = "SELECT version() AS version"
     cursor.execute(query)
