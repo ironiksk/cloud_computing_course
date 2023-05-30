@@ -15,7 +15,7 @@ variable "pgdb_username" {
 
 # Secrets
 resource "aws_secretsmanager_secret" "pgdb" {
-  name = "faas-database-secret"
+  name = local.secrets_db_name # "faas-database-secret"
   recovery_window_in_days = 7
 }
 
@@ -69,12 +69,18 @@ module "db" {
 
   multi_az               = true
 
-  db_subnet_group_name                = module.vpc.database_subnet_group
-  create_db_subnet_group              = false
-  vpc_security_group_ids              = [aws_security_group.database.id]
+  # db_subnet_group_name                = module.vpc.database_subnet_group
+  # create_db_subnet_group              = false
+  # vpc_security_group_ids              = [aws_security_group.database.id]
 
-  # db_subnet_group_name   = module.vpc.database_subnet_group
-  # vpc_security_group_ids = [module.security_group.security_group_id]
+  publicly_accessible = true
+
+
+  db_subnet_group_name   = module.vpc.database_subnet_group
+
+  # # vpc_security_group_ids = [aws_security_group.database.id] # [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.security_group.security_group_id]
+
 
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
@@ -101,45 +107,121 @@ module "db" {
 # Supporting Resources
 ################################################################################
 
+# module "vpc" {
+#   source  = "terraform-aws-modules/vpc/aws"
+#   version = "~> 3.0"
+
+#   name = "vpc-faas-db"
+#   cidr = local.vpc_cidr
+
+#   enable_nat_gateway   = true
+#   single_nat_gateway   = true
+#   enable_dns_hostnames = true
+
+#   azs              = local.azs
+#   public_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k)]
+#   private_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 3)]
+#   database_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 6)]
+
+#   create_database_subnet_group = true
+
+#   # tags = local.tags
+# }
+
+
+# module "vpc" {
+#   source  = "terraform-aws-modules/vpc/aws"
+#   version = "~> 3.0"
+
+#   create_vpc = false
+
+#   manage_default_vpc               = true
+#   default_vpc_name                 = "default"
+#   default_vpc_enable_dns_hostnames = true
+# }
+
+
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 3.0"
+  source = "terraform-aws-modules/vpc/aws"
 
-  name = "vpc-faas-db"
-  cidr = local.vpc_cidr
+  create_vpc = false
 
-  azs              = local.azs
-  public_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k)]
-  private_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 3)]
-  database_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 6)]
-
+  manage_default_vpc               = true
+  default_vpc_name                 = "default"
+  default_vpc_enable_dns_hostnames = true
   create_database_subnet_group = true
-
-  # tags = local.tags
 }
 
 
-resource "aws_security_group" "database" {
-  name        = "faas-database"
+module "security_group" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 4.0"
+
+  name            = "faas_db_security_group"
+  use_name_prefix = false
+
+  description = "Security group with HTTP and Postgress ports open for everybody (IPv4 CIDR)"
   vpc_id      = module.vpc.vpc_id
-  description = "Security Group for database"
 
-  ingress {
-    description     = "Ingress from application instances"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "TCP"
-    cidr_blocks = ["0.0.0.0/0"]
-    # security_groups = ["0.0.0.0"]
-  }
+  # ingress_cidr_blocks      = [module.vpc.vpc_cidr_block]
 
-  egress {
-    description = "Egress all"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
+  # Add MySQL rules
+  ingress_rules       = ["postgresql-tcp"]
+  egress_rules = ["all-all"]
 }
+
+
+# module "security_group" {
+#   source  = "terraform-aws-modules/security-group/aws"
+#   version = "~> 4.0"
+
+#   name =        "security_group"
+#   description = "Complete PostgreSQL example security group"
+#   vpc_id      = module.vpc.vpc_id
+
+#   # ingress
+#   ingress_with_cidr_blocks = [
+#     {
+#       from_port   = 5432
+#       to_port     = 5432
+#       protocol    = "tcp"
+#       description = "PostgreSQL access from within VPC"
+#       cidr_blocks = module.vpc.vpc_cidr_block
+#     },
+#   ]
+#   egress_with_cidr_blocks = [
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = "tcp"
+#       description = "PostgreSQL access to within VPC"
+#       cidr_blocks = module.vpc.vpc_cidr_block
+#     },
+#   ]
+
+# }
+
+# resource "aws_security_group" "database" {
+#   name        = "faas-database"
+#   vpc_id      = module.vpc.vpc_id
+#   description = "Security Group for database"
+
+#   ingress {
+#     description     = "Ingress from application instances"
+#     from_port       = 5432
+#     to_port         = 5432
+#     protocol        = "TCP"
+#     cidr_blocks = ["0.0.0.0/0"]
+#     # security_groups = ["0.0.0.0"]
+#   }
+
+#   egress {
+#     description = "Egress all"
+#     from_port   = 0
+#     to_port     = 0
+#     protocol    = "-1"
+#     cidr_blocks = ["0.0.0.0/0"]
+#   }
+
+# }
 

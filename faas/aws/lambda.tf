@@ -146,6 +146,7 @@ resource "aws_lambda_function" "db_lambda" {
   environment {
    variables = {
     DB_INSTANCE_ADDRESS = module.db.db_instance_address #aws_db_instance.bl-db.address
+    DB_SECRET_NAME = local.secrets_db_name
    }
   }
 
