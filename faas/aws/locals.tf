@@ -22,11 +22,12 @@ locals {
 
   pgdb_username = "dbuser"
 
-  db_name = "database"
+  db_name = "postgres"
 
   secrets = { 
     host = module.db.db_instance_address
-    database = module.db.db_instance_name
+    #database = module.db.db_instance_name
+    database = local.db_name
     username = module.db.db_instance_username
     password = module.db.db_instance_password
   }

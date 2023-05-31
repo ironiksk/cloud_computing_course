@@ -106,27 +106,21 @@ def get_credentials():
     return secret
 
 
-CREATE_TABLE = """CREATE TABLE IF NOT EXISTS data (
+QUERY_CREATE_TABLE = """CREATE TABLE IF NOT EXISTS data (
   id int,
   uuid VARCHAR(255) NOT NULL,
   data varchar
-)"""
+);"""
+
+QUERY_INSERT_DATA = """INSERT INTO data (uuid, data)
+VALUES ('{uuid}', '{data}')"""
 
 def db_lambda_handler(event, context):
     import psycopg2 as pg
-    # import awswrangler.secretsmanager as awssm 
-
-    logger.info("Event: " + str(event))
-
-    # database_name = "main"
-    # table_name = "cities"
-    # username = sm.get_secret_json( "postgres-database" ).get( "username" )
-    # password = sm.get_secret_json( "postgres-database" ).get( "password" )
-    # port = "5432"
-    # host_name =  
-
+ 
+    payload = event['detail']
     credential = get_credentials()
-    logger.info("credentials: " + json.dumps(credential))
+
     connection = pg.connect(
         user=credential['username'], 
         password=credential['password'], 
@@ -134,10 +128,16 @@ def db_lambda_handler(event, context):
         database=credential['database']
     )
     cursor = connection.cursor()
-    query = "SELECT version() AS version"
-    cursor.execute(query)
-    results = cursor.fetchone()
+    # query = "SELECT version() AS version"
+
+    # create table if not exists
+    cursor.execute(QUERY_CREATE_TABLE)
+
+    cursor.execute(QUERY_INSERT_DATA.format(
+        uuid=payload['id'],
+        data=json.dumps(payload)
+    ))
+
     cursor.close()
     connection.commit()
 
-    logger.info(results)

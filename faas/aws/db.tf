@@ -18,7 +18,7 @@ module "db" {
   allocated_storage     = 20
   max_allocated_storage = 100
 
-  db_name = local.db_name
+  # db_name = local.db_name
   username = local.pgdb_username
   password = random_password.pgdb.result
   port     = 5432

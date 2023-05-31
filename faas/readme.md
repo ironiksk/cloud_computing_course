@@ -77,3 +77,7 @@ Lambda calls EventBridge and event lambda consequently.
 Event lambda function checks file on existance and if file not exists - the new is created.
 
 ![Created json in bucket](files/s3_file_result.png)
+
+DB Lambda function receives event from EventBridge and stores payload to Postgres DB.
+
+![Stored model to DB](files/db_lambda.png)
