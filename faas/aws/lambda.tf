@@ -68,10 +68,10 @@ resource "aws_lambda_function" "api_event_lambda" {
 
   tags = local.common_tags
 
-  depends_on = [
-    aws_iam_role_policy_attachment.api_event_lambda,
-    aws_cloudwatch_log_group.api_event_lambda
-  ]
+#  depends_on = [
+#    aws_iam_role_policy_attachment.api_event_lambda,
+#    aws_cloudwatch_log_group.api_event_lambda
+#  ]
 }
 
 resource "aws_lambda_permission" "api_event" {

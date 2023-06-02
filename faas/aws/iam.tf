@@ -73,7 +73,7 @@ data "aws_iam_policy_document" "api_event_lambda" {
       "events:PutEvents"
     ]
 
-    resources = ["*"]
+    resources = [module.eventbridge.eventbridge_bus_arn]
   }
 
   statement {
@@ -198,7 +198,7 @@ data "aws_iam_policy_document" "db_lambda" {
       "secretsmanager:GetSecretValue"
     ]
 
-    resources = ["*"]
+    resources = [aws_secretsmanager_secret.pgdb.arn]
   }
 
   statement {
