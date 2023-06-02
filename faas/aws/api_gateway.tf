@@ -30,7 +30,8 @@ resource "aws_apigatewayv2_integration" "api_event" {
 resource "aws_apigatewayv2_route" "api_event" {
   api_id    = aws_apigatewayv2_api.api_event.id
   route_key = "POST /api"
-
+  authorization_type = "NONE"
+  
   target = "integrations/${aws_apigatewayv2_integration.api_event.id}"
 }
 

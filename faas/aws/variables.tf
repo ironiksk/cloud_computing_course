@@ -24,7 +24,7 @@ variable "region" {
 variable "log_retention_period" {
   description = "Retention period"
   type        = number
-  default     = 30
+  default     = 400
 }
 
 variable "vpc_cidr" {
